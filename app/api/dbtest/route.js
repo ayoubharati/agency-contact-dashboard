@@ -1,23 +1,13 @@
-import mysql from "mysql2/promise";
+import { NextResponse } from 'next/server';
 
 export async function GET() {
-    try {
-        const conn = await mysql.createConnection({
-            host: process.env.DB_HOST,
-            user: process.env.DB_USER,
-            password: process.env.DB_PASSWORD,
-            database: process.env.DB_NAME,
-            ssl: { rejectUnauthorized: false }
-        });
-
-        const [rows] = await conn.query("SELECT 1 AS test");
-        await conn.end();
-
-        return Response.json({ ok: true, rows });
-    } catch (err) {
-        console.error("DB ERROR:", err);
-        return new Response(JSON.stringify({ ok: false, error: err.message }), {
-            status: 500
-        });
-    }
+    return NextResponse.json({
+        ok: true,
+        message: "Hello from API",
+        env_check: {
+            has_host: !!process.env.DB_HOST,
+            has_user: !!process.env.DB_USER,
+            has_pass: !!process.env.DB_PASSWORD
+        }
+    });
 }
