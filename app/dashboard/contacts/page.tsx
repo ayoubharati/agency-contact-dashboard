@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Contact } from '@/lib/csv-parser';
+import type { Contact } from '@/lib/data-access';
 import UpgradePrompt from '@/components/UpgradePrompt';
 
 export default function ContactsPage() {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Agency } from '@/lib/csv-parser';
+import type { Agency } from '@/lib/data-access';
 
 export default function AgenciesPage() {
     const [agencies, setAgencies] = useState<Agency[]>([]);
