@@ -46,13 +46,6 @@ export default function Page() {
 
           <div className="my-4 border-t border-gray-300"></div>
 
-          <div className="flex flex-col gap-2">
-            <p className="text-sm">Already have an account?</p>
-            <a href="/sign-in" className="w-full py-1.5 px-4 border border-gray-400 rounded-sm text-sm font-medium hover:bg-gray-50 text-center shadow-sm bg-white block">
-              Sign in
-            </a>
-          </div>
-
         </div>
 
         {/* Right Column: Marketing Banner */}
