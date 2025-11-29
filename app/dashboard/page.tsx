@@ -51,25 +51,41 @@ export default async function DashboardPage() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Link
                     href="/dashboard/agencies"
-                    className="bg-white border border-gray-200 rounded p-6 hover:border-gray-300 hover:shadow-sm transition-all"
+                    className="group relative bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-lg p-8 hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
-                    <h3 className="text-base font-semibold text-gray-900 mb-2">View Agencies</h3>
-                    <p className="text-sm text-gray-600">
-                        Browse all {agencies.length.toLocaleString()} agencies with detailed information
-                    </p>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                    <div className="relative">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-xl font-bold">View Agencies</h3>
+                            <svg className="w-6 h-6 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                        </div>
+                        <p className="text-blue-100">
+                            Browse all {agencies.length.toLocaleString()} agencies with detailed information
+                        </p>
+                    </div>
                 </Link>
 
                 <Link
                     href="/dashboard/contacts"
-                    className="bg-white border border-gray-200 rounded p-6 hover:border-gray-300 hover:shadow-sm transition-all"
+                    className="group relative bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-lg p-8 hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
-                    <h3 className="text-base font-semibold text-gray-900 mb-2">View Contacts</h3>
-                    <p className="text-sm text-gray-600">
-                        Access employee contacts ({remainingViews} views remaining today)
-                    </p>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                    <div className="relative">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-xl font-bold">View Contacts</h3>
+                            <svg className="w-6 h-6 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                        </div>
+                        <p className="text-indigo-100">
+                            Access employee contacts ({remainingViews} views remaining today)
+                        </p>
+                    </div>
                 </Link>
             </div>
         </div>

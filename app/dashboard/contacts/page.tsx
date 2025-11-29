@@ -14,7 +14,7 @@ export default function ContactsPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalContacts, setTotalContacts] = useState(0);
     const [limitReached, setLimitReached] = useState(false);
-    
+
     const itemsPerPage = 20;
 
     useEffect(() => {
@@ -36,14 +36,14 @@ export default function ContactsPage() {
                     setColumns(Object.keys(result.data[0]));
                 }
                 setTotalContacts(result.total);
-                
+
                 // Even if we have cached data, we should fetch the latest stats
                 // to ensure the "Remaining Views" counter is accurate.
                 fetchUserStats();
-                
+
                 // We use the cached limitReached state initially, but the stats fetch might update it
                 setLimitReached(result.limitReached);
-                
+
                 setLoading(false);
                 return;
             }
@@ -55,7 +55,7 @@ export default function ContactsPage() {
             }
 
             const result = await response.json();
-            
+
             if (result.limitReached && result.data.length === 0) {
                 setLimitReached(true);
                 setRemainingViews(0);
@@ -70,7 +70,7 @@ export default function ContactsPage() {
             if (result.data.length > 0) {
                 setColumns(Object.keys(result.data[0]));
             }
-            
+
             setTotalContacts(result.total);
             setRemainingViews(result.remaining);
             setViewedCount(result.viewedCount || 0);
@@ -192,7 +192,7 @@ export default function ContactsPage() {
 
             {/* Table */}
             <div className="bg-white border border-gray-200 rounded overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
@@ -218,20 +218,23 @@ export default function ContactsPage() {
                 </div>
 
                 {/* Pagination */}
-                <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between text-sm">
-                    <div className="text-gray-600">
+                <div className="bg-gray-50 px-4 py-4 border-t border-gray-200 flex items-center justify-between text-sm">
+                    <div className="text-gray-600 font-medium">
                         Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalContacts)} of{' '}
-                        {totalContacts}
+                        {totalContacts.toLocaleString()}
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3">
                         <button
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1 || loading}
-                            className="px-3 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-300 transition-all shadow-sm flex items-center space-x-2"
                         >
-                            Previous
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                            <span>Previous</span>
                         </button>
-                        <span className="text-gray-600">
+                        <span className="text-gray-700 font-medium px-3">
                             Page {currentPage} of {totalPages}
                         </span>
                         <button
@@ -242,14 +245,17 @@ export default function ContactsPage() {
                                 (limitReached && contacts.length === 0) ||
                                 currentPage >= 3 // Hard limit: 50 contacts / 20 per page = 2.5 pages -> Max Page 3
                             }
-                            className="px-3 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-300 transition-all shadow-sm flex items-center space-x-2"
                         >
-                            Next
+                            <span>Next</span>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
                         </button>
                     </div>
                 </div>
             </div>
-            
+
             {limitReached && (
                 <UpgradePrompt />
             )}

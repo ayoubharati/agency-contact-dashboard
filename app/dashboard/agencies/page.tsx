@@ -8,7 +8,6 @@ export default function AgenciesPage() {
     const [columns, setColumns] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [totalAgencies, setTotalAgencies] = useState(0);
     const itemsPerPage = 20;
@@ -43,13 +42,13 @@ export default function AgenciesPage() {
             }
 
             const result = await response.json();
-            
+
             // Save to session storage
             sessionStorage.setItem(cacheKey, JSON.stringify(result));
 
             setAgencies(result.data);
             setTotalAgencies(result.total);
-            
+
             if (result.data.length > 0) {
                 setColumns(Object.keys(result.data[0]));
             }
@@ -116,25 +115,9 @@ export default function AgenciesPage() {
                 </p>
             </div>
 
-            {/* Search Bar */}
-            <div className="bg-white border border-gray-200 rounded p-4">
-                <input
-                    type="text"
-                    placeholder="Search by name, state, type, or county..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-                {searchTerm && (
-                    <p className="text-xs text-gray-600 mt-2">
-                        Search functionality is currently limited to the current page due to server-side pagination.
-                    </p>
-                )}
-            </div>
-
             {/* Table */}
             <div className="bg-white border border-gray-200 rounded overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
@@ -160,28 +143,34 @@ export default function AgenciesPage() {
                 </div>
 
                 {/* Pagination */}
-                <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between text-sm">
-                    <div className="text-gray-600">
+                <div className="bg-gray-50 px-4 py-4 border-t border-gray-200 flex items-center justify-between text-sm">
+                    <div className="text-gray-600 font-medium">
                         Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalAgencies)} of{' '}
-                        {totalAgencies}
+                        {totalAgencies.toLocaleString()}
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3">
                         <button
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1 || loading}
-                            className="px-3 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-300 transition-all shadow-sm flex items-center space-x-2"
                         >
-                            Previous
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                            <span>Previous</span>
                         </button>
-                        <span className="text-gray-600">
+                        <span className="text-gray-700 font-medium px-3">
                             Page {currentPage} of {totalPages}
                         </span>
                         <button
                             onClick={() => setCurrentPage(prev => prev + 1)}
                             disabled={currentPage >= totalPages || loading}
-                            className="px-3 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-300 transition-all shadow-sm flex items-center space-x-2"
                         >
-                            Next
+                            <span>Next</span>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
                         </button>
                     </div>
                 </div>

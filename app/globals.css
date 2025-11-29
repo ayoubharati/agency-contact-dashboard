@@ -1,8 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Professional Color Palette */
+  --background: #f8f9fa;
+  --foreground: #1a1a1a;
+  --primary: #2563eb;
+  --primary-dark: #1e40af;
+  --secondary: #64748b;
+  --accent: #0ea5e9;
+  --border: #e2e8f0;
+  --card-bg: #ffffff;
+
+  /* Geometric Pattern Colors */
+  --pattern-primary: rgba(37, 99, 235, 0.03);
+  --pattern-secondary: rgba(14, 165, 233, 0.02);
 }
 
 @theme inline {
@@ -13,8 +24,17 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f172a;
+    --foreground: #f1f5f9;
+    --primary: #3b82f6;
+    --primary-dark: #2563eb;
+    --secondary: #94a3b8;
+    --accent: #38bdf8;
+    --border: #1e293b;
+    --card-bg: #1e293b;
+
+    --pattern-primary: rgba(59, 130, 246, 0.05);
+    --pattern-secondary: rgba(56, 189, 248, 0.03);
   }
 }
 
@@ -22,4 +42,81 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-noto-sans), system-ui, -apple-system, sans-serif;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Professional Geometric Background Pattern */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 1;
+  background-image:
+    linear-gradient(30deg, var(--pattern-primary) 12%, transparent 12.5%, transparent 87%, var(--pattern-primary) 87.5%, var(--pattern-primary)),
+    linear-gradient(150deg, var(--pattern-primary) 12%, transparent 12.5%, transparent 87%, var(--pattern-primary) 87.5%, var(--pattern-primary)),
+    linear-gradient(30deg, var(--pattern-primary) 12%, transparent 12.5%, transparent 87%, var(--pattern-primary) 87.5%, var(--pattern-primary)),
+    linear-gradient(150deg, var(--pattern-primary) 12%, transparent 12.5%, transparent 87%, var(--pattern-primary) 87.5%, var(--pattern-primary)),
+    linear-gradient(60deg, var(--pattern-secondary) 25%, transparent 25.5%, transparent 75%, var(--pattern-secondary) 75%, var(--pattern-secondary)),
+    linear-gradient(60deg, var(--pattern-secondary) 25%, transparent 25.5%, transparent 75%, var(--pattern-secondary) 75%, var(--pattern-secondary));
+  background-size: 80px 140px;
+  background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;
+}
+
+/* Ensure content appears above background */
+body>* {
+  position: relative;
+  z-index: 1;
+}
+
+/* Smooth transitions for interactive elements */
+button,
+a,
+input,
+select {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--secondary);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Custom scrollbar for tables */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
