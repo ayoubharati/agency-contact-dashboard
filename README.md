@@ -8,7 +8,7 @@ A Next.js application for managing and viewing agency and employee contact infor
 *   **Daily View Limits:** Users are limited to viewing **50 contacts per day**.
     *   **Log Book Tracking:** Uses a database table to track unique contact views per user per day.
     *   **Duplicate Protection:** Viewing the same contact multiple times in one day does not consume additional credits.
-    *   **Hard Block:** Navigation is restricted past the limit (Page 3).
+    *   **Hard Block:** Navigation is restricted past the limit.
 *   **Optimized Performance:**
     *   **Lazy Loading:** Data is fetched in chunks (Pagination) to reduce initial load time.
     *   **Session Caching:** Visited pages are cached in the browser session for instant navigation without re-fetching.
@@ -16,7 +16,7 @@ A Next.js application for managing and viewing agency and employee contact infor
 
 ## 🛠️ Tech Stack
 
-*   **Framework:** Next.js 15 (App Router)
+*   **Framework:** Next.js 16 (App Router)
 *   **Language:** TypeScript
 *   **Database:** MySQL (AWS RDS)
 *   **Auth:** Clerk
