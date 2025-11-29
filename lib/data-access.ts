@@ -12,8 +12,6 @@ export interface Agency {
     total_students: string;
     mailing_address: string;
     grade_span: string;
-    locale: string;
-    csa_cbsa: string;
     domain_name: string;
     physical_address: string;
     phone: string;
@@ -44,22 +42,20 @@ export interface Contact {
 /**
  * Fetch all agencies from database
  */
-export async function getAgencies(): Promise<Agency[]> {
-    const [rows] = await pool.query(`
+export async function getAgencies(limit?: number, offset?: number): Promise<Agency[]> {
+    let query = `
         SELECT
-            id as name,
-            id as id,
-            name as state,
-            type as state_code,
-            state as type,
+            id,
+            name,
+            state,
+            state_code,
+            type,
             population,
             website,
             total_schools,
             total_students,
             mailing_address,
             grade_span,
-            locale,
-            csa_cbsa,
             domain_name,
             physical_address,
             phone,
@@ -70,34 +66,62 @@ export async function getAgencies(): Promise<Agency[]> {
             created_at,
             updated_at
         FROM agencies
-        ORDER BY id
-    `);
+        ORDER BY name
+    `;
+
+    const params: any[] = [];
+
+    if (limit !== undefined && offset !== undefined) {
+        query += ` LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+    }
+
+    const [rows] = await pool.query(query, params);
     return rows as Agency[];
+}
+
+export async function getTotalAgenciesCount(): Promise<number> {
+    const [rows] = await pool.query(`SELECT COUNT(*) as count FROM agencies`);
+    return (rows as any)[0].count;
 }
 
 /**
  * Fetch all contacts from database
  */
-export async function getContacts(): Promise<Contact[]> {
-    const [rows] = await pool.query(`
+export async function getContacts(limit?: number, offset?: number): Promise<Contact[]> {
+    let query = `
         SELECT
             id,
             first_name,
             last_name,
-            title as email,
-            department as phone,
-            email as title,
-            phone as department,
+            email,
+            phone,
+            title,
             email_type,
             contact_form_url,
             created_at,
             updated_at,
             agency_id,
-            firm_id
+            firm_id,
+            department
         FROM contacts
         ORDER BY last_name, first_name
-    `);
+    `;
+
+    const params: any[] = [];
+
+    if (limit !== undefined && offset !== undefined) {
+        query += ` LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+    }
+
+    const [rows] = await pool.query(query, params);
     return rows as Contact[];
+}
+
+export async function getTotalContactsCount(): Promise<number> {
+    const [rows] = await pool.query(`SELECT COUNT(*) as count FROM contacts`);
+    return (rows as any)[0].count;
 }
 
 /**
@@ -106,19 +130,17 @@ export async function getContacts(): Promise<Contact[]> {
 export async function getAgencyById(agencyId: string): Promise<Agency | null> {
     const [rows] = await pool.query(`
         SELECT
-            id as name,
-            id as id,
-            name as state,
-            type as state_code,
-            state as type,
+            id,
+            name,
+            state,
+            state_code,
+            type,
             population,
             website,
             total_schools,
             total_students,
             mailing_address,
             grade_span,
-            locale,
-            csa_cbsa,
             domain_name,
             physical_address,
             phone,
@@ -128,7 +150,7 @@ export async function getAgencyById(agencyId: string): Promise<Agency | null> {
             county,
             created_at,
             updated_at
-        FROM agencies
+        FROM agencies 
         WHERE id = ?
     `, [agencyId]);
     const agencies = rows as Agency[];
@@ -144,17 +166,17 @@ export async function getContactById(contactId: string): Promise<Contact | null>
             id,
             first_name,
             last_name,
-            title as email,
-            department as phone,
-            email as title,
-            phone as department,
+            email,
+            phone,
+            title,
             email_type,
             contact_form_url,
             created_at,
             updated_at,
             agency_id,
-            firm_id
-        FROM contacts
+            firm_id,
+            department
+        FROM contacts 
         WHERE id = ?
     `, [contactId]);
     const contacts = rows as Contact[];
@@ -168,19 +190,17 @@ export async function searchAgencies(searchTerm: string): Promise<Agency[]> {
     const searchPattern = `%${searchTerm}%`;
     const [rows] = await pool.query(
         `SELECT
-            id as name,
-            id as id,
-            name as state,
-            type as state_code,
-            state as type,
+            id,
+            name,
+            state,
+            state_code,
+            type,
             population,
             website,
             total_schools,
             total_students,
             mailing_address,
             grade_span,
-            locale,
-            csa_cbsa,
             domain_name,
             physical_address,
             phone,
@@ -190,12 +210,12 @@ export async function searchAgencies(searchTerm: string): Promise<Agency[]> {
             county,
             created_at,
             updated_at
-        FROM agencies
-        WHERE id LIKE ?
-           OR name LIKE ?
-           OR state LIKE ?
+        FROM agencies 
+        WHERE name LIKE ? 
+           OR state LIKE ? 
+           OR type LIKE ? 
            OR county LIKE ?
-        ORDER BY id`,
+        ORDER BY name`,
         [searchPattern, searchPattern, searchPattern, searchPattern]
     );
     return rows as Agency[];
@@ -211,20 +231,20 @@ export async function searchContacts(searchTerm: string): Promise<Contact[]> {
             id,
             first_name,
             last_name,
-            title as email,
-            department as phone,
-            email as title,
-            phone as department,
+            email,
+            phone,
+            title,
             email_type,
             contact_form_url,
             created_at,
             updated_at,
             agency_id,
-            firm_id
-        FROM contacts
+            firm_id,
+            department
+        FROM contacts 
         WHERE CONCAT(first_name, ' ', last_name) LIKE ?
-           OR title LIKE ?
            OR email LIKE ?
+           OR title LIKE ?
            OR department LIKE ?
         ORDER BY last_name, first_name`,
         [searchPattern, searchPattern, searchPattern, searchPattern]

@@ -5,44 +5,54 @@ import type { Agency } from '@/lib/data-access';
 
 export default function AgenciesPage() {
     const [agencies, setAgencies] = useState<Agency[]>([]);
-    const [filteredAgencies, setFilteredAgencies] = useState<Agency[]>([]);
+    const [columns, setColumns] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalAgencies, setTotalAgencies] = useState(0);
     const itemsPerPage = 20;
 
     useEffect(() => {
-        fetchAgencies();
-    }, []);
+        fetchAgencies(currentPage);
+    }, [currentPage]);
 
-    useEffect(() => {
-        if (searchTerm) {
-            const filtered = agencies.filter(agency =>
-                agency.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                agency.state.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                agency.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                agency.county.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-            setFilteredAgencies(filtered);
-        } else {
-            setFilteredAgencies(agencies);
-        }
-        setCurrentPage(1);
-    }, [searchTerm, agencies]);
-
-    async function fetchAgencies() {
+    async function fetchAgencies(page: number) {
         try {
             setLoading(true);
-            const response = await fetch('/api/agencies');
+
+            // Check session storage first
+            const cacheKey = `agencies_page_${page}`;
+            const cachedData = sessionStorage.getItem(cacheKey);
+
+            if (cachedData) {
+                const result = JSON.parse(cachedData);
+                setAgencies(result.data);
+                setTotalAgencies(result.total);
+                if (result.data.length > 0) {
+                    setColumns(Object.keys(result.data[0]));
+                }
+                setLoading(false);
+                return;
+            }
+
+            const response = await fetch(`/api/agencies?page=${page}&limit=${itemsPerPage}`);
 
             if (!response.ok) {
                 throw new Error('Failed to fetch agencies');
             }
 
             const result = await response.json();
+            
+            // Save to session storage
+            sessionStorage.setItem(cacheKey, JSON.stringify(result));
+
             setAgencies(result.data);
-            setFilteredAgencies(result.data);
+            setTotalAgencies(result.total);
+            
+            if (result.data.length > 0) {
+                setColumns(Object.keys(result.data[0]));
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
@@ -50,12 +60,37 @@ export default function AgenciesPage() {
         }
     }
 
-    const totalPages = Math.ceil(filteredAgencies.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const currentAgencies = filteredAgencies.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(totalAgencies / itemsPerPage);
 
-    if (loading) {
+    const formatHeader = (key: string) => {
+        return key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    };
+
+    const renderCell = (item: any, key: string) => {
+        const value = item[key];
+        if (value === null || value === undefined || value === '') return '-';
+
+        if (key === 'website' && typeof value === 'string' && value.startsWith('http')) {
+            return (
+                <a
+                    href={value}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                >
+                    Visit
+                </a>
+            );
+        }
+
+        if ((key === 'population' || key === 'total_students' || key === 'total_schools') && !isNaN(Number(value))) {
+            return parseInt(value).toLocaleString();
+        }
+
+        return String(value);
+    };
+
+    if (loading && agencies.length === 0) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-sm text-gray-600">Loading agencies...</div>
@@ -77,7 +112,7 @@ export default function AgenciesPage() {
             <div className="bg-white border border-gray-200 rounded p-6">
                 <h1 className="text-2xl font-semibold text-gray-900 mb-1">Agencies</h1>
                 <p className="text-sm text-gray-600">
-                    {agencies.length.toLocaleString()} total agencies
+                    {totalAgencies.toLocaleString()} total agencies
                 </p>
             </div>
 
@@ -92,7 +127,7 @@ export default function AgenciesPage() {
                 />
                 {searchTerm && (
                     <p className="text-xs text-gray-600 mt-2">
-                        {filteredAgencies.length} result{filteredAgencies.length !== 1 ? 's' : ''}
+                        Search functionality is currently limited to the current page due to server-side pagination.
                     </p>
                 )}
             </div>
@@ -103,42 +138,21 @@ export default function AgenciesPage() {
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-700">State</th>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-700">Type</th>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-700">Population</th>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-700">Schools</th>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-700">Students</th>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-700">Website</th>
+                                {columns.map((col) => (
+                                    <th key={col} className="px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">
+                                        {formatHeader(col)}
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {currentAgencies.map((agency) => (
+                            {agencies.map((agency) => (
                                 <tr key={agency.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-3 font-medium text-gray-900">{agency.name}</td>
-                                    <td className="px-4 py-3 text-gray-700">{agency.state}</td>
-                                    <td className="px-4 py-3 text-gray-700">{agency.type}</td>
-                                    <td className="px-4 py-3 text-gray-700">
-                                        {agency.population ? parseInt(agency.population).toLocaleString() : '-'}
-                                    </td>
-                                    <td className="px-4 py-3 text-gray-700">{agency.total_schools || '-'}</td>
-                                    <td className="px-4 py-3 text-gray-700">
-                                        {agency.total_students ? parseInt(agency.total_students).toLocaleString() : '-'}
-                                    </td>
-                                    <td className="px-4 py-3 text-gray-700">
-                                        {agency.website ? (
-                                            <a
-                                                href={agency.website}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-blue-600 hover:underline"
-                                            >
-                                                Visit
-                                            </a>
-                                        ) : (
-                                            '-'
-                                        )}
-                                    </td>
+                                    {columns.map((col) => (
+                                        <td key={`${agency.id}-${col}`} className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                                            {renderCell(agency, col)}
+                                        </td>
+                                    ))}
                                 </tr>
                             ))}
                         </tbody>
@@ -146,33 +160,31 @@ export default function AgenciesPage() {
                 </div>
 
                 {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between text-sm">
-                        <div className="text-gray-600">
-                            Showing {startIndex + 1} to {Math.min(endIndex, filteredAgencies.length)} of{' '}
-                            {filteredAgencies.length}
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <button
-                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}
-                                className="px-3 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Previous
-                            </button>
-                            <span className="text-gray-600">
-                                Page {currentPage} of {totalPages}
-                            </span>
-                            <button
-                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                disabled={currentPage === totalPages}
-                                className="px-3 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Next
-                            </button>
-                        </div>
+                <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between text-sm">
+                    <div className="text-gray-600">
+                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalAgencies)} of{' '}
+                        {totalAgencies}
                     </div>
-                )}
+                    <div className="flex items-center space-x-2">
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1 || loading}
+                            className="px-3 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Previous
+                        </button>
+                        <span className="text-gray-600">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                            onClick={() => setCurrentPage(prev => prev + 1)}
+                            disabled={currentPage >= totalPages || loading}
+                            className="px-3 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );

@@ -6,49 +6,76 @@ import UpgradePrompt from '@/components/UpgradePrompt';
 
 export default function ContactsPage() {
     const [contacts, setContacts] = useState<Contact[]>([]);
-    const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
+    const [columns, setColumns] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [remainingViews, setRemainingViews] = useState<number | null>(null);
     const [viewedCount, setViewedCount] = useState<number>(0);
-    const [viewedContactIds, setViewedContactIds] = useState<Set<string>>(new Set());
-    const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalContacts, setTotalContacts] = useState(0);
+    const [limitReached, setLimitReached] = useState(false);
+    
     const itemsPerPage = 20;
 
     useEffect(() => {
-        fetchContacts();
-    }, []);
+        fetchContacts(currentPage);
+    }, [currentPage]);
 
-    useEffect(() => {
-        if (searchTerm) {
-            const filtered = contacts.filter(contact =>
-                `${contact.first_name} ${contact.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                contact.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                contact.department.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-            setFilteredContacts(filtered);
-        } else {
-            setFilteredContacts(contacts);
-        }
-        setCurrentPage(1);
-    }, [searchTerm, contacts]);
-
-    async function fetchContacts() {
+    async function fetchContacts(page: number) {
         try {
             setLoading(true);
-            const response = await fetch('/api/contacts');
+
+            // Check session storage first
+            const cacheKey = `contacts_page_${page}`;
+            const cachedData = sessionStorage.getItem(cacheKey);
+
+            if (cachedData) {
+                const result = JSON.parse(cachedData);
+                setContacts(result.data);
+                if (result.data.length > 0) {
+                    setColumns(Object.keys(result.data[0]));
+                }
+                setTotalContacts(result.total);
+                
+                // Even if we have cached data, we should fetch the latest stats
+                // to ensure the "Remaining Views" counter is accurate.
+                fetchUserStats();
+                
+                // We use the cached limitReached state initially, but the stats fetch might update it
+                setLimitReached(result.limitReached);
+                
+                setLoading(false);
+                return;
+            }
+
+            const response = await fetch(`/api/contacts?page=${page}&limit=${itemsPerPage}`);
 
             if (!response.ok) {
                 throw new Error('Failed to fetch contacts');
             }
 
             const result = await response.json();
+            
+            if (result.limitReached && result.data.length === 0) {
+                setLimitReached(true);
+                setRemainingViews(0);
+                setViewedCount(50);
+                return;
+            }
+
+            // Save to session storage
+            sessionStorage.setItem(cacheKey, JSON.stringify(result));
+
             setContacts(result.data);
-            setFilteredContacts(result.data);
+            if (result.data.length > 0) {
+                setColumns(Object.keys(result.data[0]));
+            }
+            
+            setTotalContacts(result.total);
             setRemainingViews(result.remaining);
             setViewedCount(result.viewedCount || 0);
+            setLimitReached(result.limitReached);
+
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
@@ -56,58 +83,31 @@ export default function ContactsPage() {
         }
     }
 
-    async function trackContactView(contactId: string) {
-        // If already tracked in this session, skip
-        if (viewedContactIds.has(contactId)) {
-            return;
+    const totalPages = Math.ceil(totalContacts / itemsPerPage);
+
+    const formatHeader = (key: string) => {
+        return key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    };
+
+    const renderCell = (item: any, key: string) => {
+        const value = item[key];
+        if (value === null || value === undefined || value === '') return '-';
+
+        if (key === 'email') {
+            return (
+                <a
+                    href={`mailto:${value}`}
+                    className="text-blue-600 hover:underline"
+                >
+                    {value}
+                </a>
+            );
         }
 
-        try {
-            const response = await fetch('/api/contacts/view', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ contactId }),
-            });
+        return String(value);
+    };
 
-            if (response.status === 403) {
-                // Limit exceeded, refresh to show upgrade prompt
-                window.location.reload();
-                return;
-            }
-
-            if (response.ok) {
-                const result = await response.json();
-
-                // Update local state
-                setViewedContactIds(prev => new Set([...prev, contactId]));
-
-                if (!result.alreadyViewed) {
-                    setViewedCount(result.viewedCount);
-                    setRemainingViews(50 - result.viewedCount);
-                }
-            }
-        } catch (err) {
-            console.error('Error tracking contact view:', err);
-        }
-    }
-
-    const totalPages = Math.ceil(filteredContacts.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const currentContacts = filteredContacts.slice(startIndex, endIndex);
-
-    // Track views when contacts are displayed
-    useEffect(() => {
-        if (currentContacts.length > 0 && remainingViews !== null && remainingViews > 0) {
-            currentContacts.forEach(contact => {
-                trackContactView(contact.id);
-            });
-        }
-    }, [currentContacts, remainingViews]);
-
-    if (loading) {
+    if (loading && contacts.length === 0) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-sm text-gray-600">Loading contacts...</div>
@@ -123,8 +123,8 @@ export default function ContactsPage() {
         );
     }
 
-    // Show upgrade prompt if no remaining views
-    if (remainingViews === 0) {
+    // Show upgrade prompt if limit reached and no contacts to show
+    if (limitReached && contacts.length === 0) {
         return (
             <div className="space-y-4">
                 <div className="bg-white border border-gray-200 rounded p-6">
@@ -134,6 +134,22 @@ export default function ContactsPage() {
                 <UpgradePrompt />
             </div>
         );
+    }
+
+    async function fetchUserStats() {
+        try {
+            const response = await fetch('/api/user-stats');
+            if (response.ok) {
+                const stats = await response.json();
+                setRemainingViews(stats.remaining);
+                setViewedCount(stats.viewedCount);
+                if (stats.remaining === 0) {
+                    setLimitReached(true);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to update user stats', err);
+        }
     }
 
     return (
@@ -160,26 +176,19 @@ export default function ContactsPage() {
             {remainingViews !== null && remainingViews <= 10 && remainingViews > 0 && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
                     <p className="text-sm text-yellow-800">
-                        You have {remainingViews} contact view{remainingViews !== 1 ? 's' : ''} remaining today. Each contact you view on this page counts toward your daily limit.
+                        You have {remainingViews} contact view{remainingViews !== 1 ? 's' : ''} remaining today.
                     </p>
                 </div>
             )}
 
-            {/* Search Bar */}
-            <div className="bg-white border border-gray-200 rounded p-4">
-                <input
-                    type="text"
-                    placeholder="Search by name, email, title, or department..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-                {searchTerm && (
-                    <p className="text-xs text-gray-600 mt-2">
-                        {filteredContacts.length} result{filteredContacts.length !== 1 ? 's' : ''}
+            {/* Limit Reached Warning (Partial Data) */}
+            {limitReached && contacts.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded p-4">
+                    <p className="text-sm text-red-800">
+                        You have reached your daily limit. Upgrade to view more contacts.
                     </p>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* Table */}
             <div className="bg-white border border-gray-200 rounded overflow-hidden">
@@ -187,34 +196,21 @@ export default function ContactsPage() {
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-700">Email</th>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-700">Phone</th>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-700">Title</th>
-                                <th className="px-4 py-3 text-left font-semibold text-gray-700">Department</th>
+                                {columns.map((col) => (
+                                    <th key={col} className="px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">
+                                        {formatHeader(col)}
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {currentContacts.map((contact) => (
+                            {contacts.map((contact) => (
                                 <tr key={contact.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-3 font-medium text-gray-900">
-                                        {contact.first_name} {contact.last_name}
-                                    </td>
-                                    <td className="px-4 py-3 text-gray-700">
-                                        {contact.email ? (
-                                            <a
-                                                href={`mailto:${contact.email}`}
-                                                className="text-blue-600 hover:underline"
-                                            >
-                                                {contact.email}
-                                            </a>
-                                        ) : (
-                                            '-'
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3 text-gray-700">{contact.phone || '-'}</td>
-                                    <td className="px-4 py-3 text-gray-700">{contact.title || '-'}</td>
-                                    <td className="px-4 py-3 text-gray-700">{contact.department || '-'}</td>
+                                    {columns.map((col) => (
+                                        <td key={`${contact.id}-${col}`} className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                                            {renderCell(contact, col)}
+                                        </td>
+                                    ))}
                                 </tr>
                             ))}
                         </tbody>
@@ -222,34 +218,41 @@ export default function ContactsPage() {
                 </div>
 
                 {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between text-sm">
-                        <div className="text-gray-600">
-                            Showing {startIndex + 1} to {Math.min(endIndex, filteredContacts.length)} of{' '}
-                            {filteredContacts.length}
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <button
-                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}
-                                className="px-3 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Previous
-                            </button>
-                            <span className="text-gray-600">
-                                Page {currentPage} of {totalPages}
-                            </span>
-                            <button
-                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                disabled={currentPage === totalPages}
-                                className="px-3 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Next
-                            </button>
-                        </div>
+                <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between text-sm">
+                    <div className="text-gray-600">
+                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalContacts)} of{' '}
+                        {totalContacts}
                     </div>
-                )}
+                    <div className="flex items-center space-x-2">
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1 || loading}
+                            className="px-3 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Previous
+                        </button>
+                        <span className="text-gray-600">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                            onClick={() => setCurrentPage(prev => prev + 1)}
+                            disabled={
+                                currentPage >= totalPages ||
+                                loading ||
+                                (limitReached && contacts.length === 0) ||
+                                currentPage >= 3 // Hard limit: 50 contacts / 20 per page = 2.5 pages -> Max Page 3
+                            }
+                            className="px-3 py-1.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
             </div>
+            
+            {limitReached && (
+                <UpgradePrompt />
+            )}
         </div>
     );
 }
